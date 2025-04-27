@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>English Dictionary with Voice</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #74ebd5, #ACB6E5);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      color: white;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px;
+    }
+
+    #definition {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 600px;
+      margin-top: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .controls button {
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #6a11cb;
+      color: white;
+      transition: 0.3s;
+    }
+
+    .controls button:hover {
+      background-color: #2575fc;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 10px;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 English Dictionary</h1>
+  <input type="text" id="wordInput" placeholder="Enter a word..." />
+  <button onclick="getMeaning()">Get Meaning</button>
+
+  <div class="controls">
+    <button onclick="playPronunciation()">🔊 Pronounce</button>
+    <button onclick="startRecording()">🎤 Start Recording</button>
+    <button onclick="stopRecording()">🛑 Stop Recording</button>
+    <button onclick="playRecording()">▶️ Play My Voice</button>
+  </div>
+
+  <div id="definition"></div>
+
+  <script>
+    let audioUrl = '';
+    let mediaRecorder;
+    let audioChunks = [];
+    let recordedAudio;
+
+    function getMeaning() {
+      const word = document.getElementById('wordInput').value.trim();
+      if (!word) return;
+
+      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.title) {
+            document.getElementById('definition').innerHTML = `<p>Word not found.</p>`;
+            return;
+          }
+
+          const def = data[0].meanings[0].definitions[0].definition;
+          audioUrl = data[0].phonetics.find(p => p.audio)?.audio || '';
+          document.getElementById('definition').innerHTML = `
+            <h2>${word}</h2>
+            <p><strong>Meaning:</strong> ${def}</p>
+          `;
+        })
+        .catch(err => {
+          document.getElementById('definition').innerHTML = `<p>Error fetching meaning.</p>`;
+        });
+    }
+
+    function playPronunciation() {
+      if (audioUrl) {
+        new Audio(audioUrl).play();
+      } else {
+        alert("No audio available for this word.");
+      }
+    }
+
+    function startRecording() {
+      if (!navigator.mediaDevices) {
+        alert("Recording not supported.");
+        return;
+      }
+
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks);
+            recordedAudio = new Audio(URL.createObjectURL(audioBlob));
+          };
+
+          mediaRecorder.start();
+          console.log("Recording started.");
+        })
+        .catch(err => {
+          alert("Microphone access denied.");
+        });
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        console.log("Recording stopped.");
+      } else {
+        alert("Recording has not started.");
+      }
+    }
+
+    function playRecording() {
+      if (recordedAudio) {
+        recordedAudio.play();
+      } else {
+        alert("Please record your voice first.");
+      }
+    }
+  </script>
+</body>
+</html>
